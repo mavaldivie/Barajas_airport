@@ -6,9 +6,9 @@ def uniform(a, b):
 
 def exponential(lam):
     u = uniform(0, 1)
-    return -math.log(u, math.e) / lam
+    return -math.log(u) / lam
 
-def normal(mu, theta2):
+def normal(mu, sigma2):
     while True:
         y = exponential(1)
         u = uniform(0, 1)
@@ -18,4 +18,4 @@ def normal(mu, theta2):
                 sign = 1
             else:
                 sign = -1
-            return sign * y * math.sqrt(theta2) + mu
+            return sign * y * math.sqrt(sigma2) + mu
