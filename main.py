@@ -27,7 +27,12 @@ class barajas_airport:
         self.logs = []
 
     def log(self, msg):
-        self.logs.append(f'{round(self.current_time,2)}: {msg}')
+        minutes = round(self.current_time)
+        hours = minutes // 60
+        minutes = minutes % 60
+        days = hours // 24
+        hours = hours % 24
+        self.logs.append(f'{days}d {hours}h {minutes}m: {msg}')
 
     def get_free_track(self):
         available_tracks = [i for i in range(self.n) if
@@ -61,8 +66,10 @@ class barajas_airport:
     def generate_landing_time(self, mu=10, sigma2=5):
         return self.current_time + sim.normal(mu,sigma2)
 
-    def generate_loading_time(self, lam=1/30):
-        return self.current_time + sim.exponential(lam)
+    def generate_loading_time(self, lam=1/30, both=False):
+        time = self.current_time + sim.exponential(lam)
+        if both: time += sim.exponential(lam)
+        return time
 
     def generate_repairing_time(self, lam=1/15):
         return self.current_time + sim.exponential(lam)
@@ -105,11 +112,27 @@ class barajas_airport:
 
     def loading_airplane_event(self):
         track = self.get_loading_track()
-        self.log(f'Airplane #{self.plane_in_track[track] + 1} '
-                 f'started loading and fueling in track {track + 1}.')
+        fueling = self.generate_fueling_time()
         self.finished_landing_time[track] = self.oo
-        self.finished_loading_time[track] = max(self.generate_loading_time(),
-                             self.generate_fueling_time())
+
+        u = sim.uniform(0, 1)
+        if u <= .25:
+            self.log(f'Airplane #{self.plane_in_track[track] + 1} '
+                     f'started fueling in track {track + 1}.')
+            time = fueling
+        elif u <= .5:
+            self.log(f'Airplane #{self.plane_in_track[track] + 1} '
+                     f'started fueling and loading in track {track + 1}.')
+            time = max(fueling, self.generate_loading_time())
+        elif u <= .75:
+            self.log(f'Airplane #{self.plane_in_track[track] + 1} '
+                     f'started fueling and downloading in track {track + 1}.')
+            time = max(fueling, self.generate_loading_time())
+        else:
+            self.log(f'Airplane #{self.plane_in_track[track] + 1} '
+                     f'started fueling, loading and then downloading in track {track + 1}.')
+            time = max(fueling, self.generate_loading_time(both=True))
+        self.finished_loading_time[track] = time
 
     def repairing_airplane_event(self):
         track = self.get_repairing_track()
@@ -180,7 +203,7 @@ class barajas_airport:
         return self.logs
 
 
-ba = barajas_airport(4)
+ba = barajas_airport(5)
 
 logs = ba.simulate_barajas_airport(10080)
 for i in logs: print(i)
